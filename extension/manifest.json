@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "BruteForce Quick Logger",
+  "version": "1.0",
+  "description": "Log DSA problems directly to BruteForce from LeetCode and GeeksforGeeks.",
+  
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Log Problem to BruteForce"
+  },
+
+  "permissions": [
+    "activeTab"
+  ],
+
+  "host_permissions": [
+    "http://localhost:1000/*"
+  ]
+}
+

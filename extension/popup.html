@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BruteForce Quick Logger</title>
+    <link href="output.css" rel="stylesheet">
+    <style>
+        /* Custom scrollbar to match the dark aesthetic */
+        body::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        body::-webkit-scrollbar-track {
+            background: #0f1115;
+        }
+
+        body::-webkit-scrollbar-thumb {
+            background: #333842;
+            border-radius: 9999px;
+        }
+
+        body::-webkit-scrollbar-thumb:hover {
+            background: #4b5563;
+        }
+
+        /* Invert the native HTML5 calendar icon for dark mode */
+        ::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+            opacity: 0.5;
+            cursor: pointer;
+        }
+
+        ::-webkit-calendar-picker-indicator:hover {
+            opacity: 0.8;
+        }
+    </style>
+</head>
+
+<body class="w-[380px] bg-[#0f1115] text-gray-200 font-sans antialiased text-sm select-none">
+
+    <div class="p-5">
+
+        <!-- Header (Matching the </ > Logo and "Solve. Debug. Learn." layout) -->
+        <header class="flex flex-col items-center justify-center pb-4 border-b border-[#22252e] mb-5">
+            <div class="flex items-center gap-2 mb-1">
+                <span class="text-emerald-500 font-mono font-bold text-lg">&lt;/&gt;</span>
+                <h1 class="font-bold text-white tracking-wide text-lg">BruteForce</h1>
+            </div>
+            <p class="text-[11px] font-medium text-gray-400">Solve. Debug. <span class="text-emerald-500">Learn.</span>
+            </p>
+        </header>
+
+        <!-- Main Form Container -->
+        <main class="bg-[#15181e] border border-[#22252e] rounded-xl p-4 space-y-4 shadow-lg">
+
+            <!-- Status Banner -->
+            <div id="status-msg" class="hidden mt-3 p-2 rounded-md text-xs text-center font-medium transition-all">
+            </div>
+
+            <!-- Title -->
+            <div>
+                <label for="title"
+                    class="block text-[11px] font-semibold text-gray-400 mb-1.5 text-center uppercase tracking-wider">Problem
+                    Title</label>
+                <input type="text" id="title"
+                    class="w-full bg-[#1c1f26] border border-[#2b303b] rounded-lg px-3 py-2 text-gray-200 placeholder-gray-600 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition"
+                    placeholder="e.g., Koko Eating Bananas" required>
+            </div>
+
+            <!-- Platform & Category (Topic) -->
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label for="platform"
+                        class="block text-[11px] font-semibold text-gray-400 mb-1.5 text-center uppercase tracking-wider">Platform</label>
+                    <input type="text" id="platform"
+                        class="w-full bg-[#1c1f26] border border-[#2b303b] rounded-lg px-3 py-2 text-gray-200 placeholder-gray-600 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition"
+                        placeholder="e.g., LeetCode" required>
+                </div>
+                <div>
+                    <label for="topic"
+                        class="block text-[11px] font-semibold text-gray-400 mb-1.5 text-center uppercase tracking-wider">Category
+                        (Pattern)</label>
+                    <input type="text" id="topic"
+                        class="w-full bg-[#1c1f26] border border-[#2b303b] rounded-lg px-3 py-2 text-gray-200 placeholder-gray-600 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition"
+                        placeholder="e.g., Binary Search" required>
+                </div>
+            </div>
+
+            <!-- Difficulty & Time -->
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label for="difficulty"
+                        class="block text-[11px] font-semibold text-gray-400 mb-1.5 text-center uppercase tracking-wider">Difficulty</label>
+                    <select id="difficulty"
+                        class="w-full bg-[#1c1f26] border border-[#2b303b] rounded-lg px-3 py-2 text-gray-200 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition cursor-pointer"
+                        required>
+                        <option value="Easy" class="bg-[#1c1f26]">Easy</option>
+                        <option value="Medium" class="bg-[#1c1f26]" selected>Medium</option>
+                        <option value="Hard" class="bg-[#1c1f26]">Hard</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="time"
+                        class="block text-[11px] font-semibold text-gray-400 mb-1.5 text-center uppercase tracking-wider">Time
+                        Taken</label>
+                    <input type="text" id="time"
+                        class="w-full bg-[#1c1f26] border border-[#2b303b] rounded-lg px-3 py-2 text-gray-200 placeholder-gray-600 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition"
+                        placeholder="e.g., 45 mins">
+                </div>
+            </div>
+
+            <!-- Revisit Date & Solved Status -->
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label for="reminderTime"
+                        class="block text-[11px] font-semibold text-gray-400 mb-1.5 text-center uppercase tracking-wider">Revisit
+                        Date</label>
+                    <input type="date" id="reminderTime"
+                        class="w-full bg-[#1c1f26] border border-[#2b303b] rounded-lg px-3 py-2 text-gray-200 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition cursor-pointer">
+                </div>
+                <div>
+                    <label
+                        class="block text-[11px] font-semibold text-gray-400 mb-1.5 text-center uppercase tracking-wider">Status</label>
+                    <label for="solved"
+                        class="flex items-center justify-center gap-2 w-full bg-[#1c1f26] border border-[#2b303b] rounded-lg px-3 py-2 text-gray-200 text-sm cursor-pointer hover:border-[#424959] transition">
+                        <input type="checkbox" id="solved"
+                            class="w-4 h-4 rounded border-[#2b303b] bg-[#0f1115] text-emerald-500 focus:ring-emerald-500 focus:ring-offset-[#1c1f26] cursor-pointer accent-emerald-500">
+                        <span>Solved</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Problem URL -->
+            <div>
+                <label for="link"
+                    class="block text-[11px] font-semibold text-gray-400 mb-1.5 text-center uppercase tracking-wider">URL</label>
+                <input type="url" id="link"
+                    class="w-full bg-[#0f1115] border border-[#1f232b] text-gray-500 rounded-lg px-3 py-2 text-xs font-mono truncate focus:outline-none cursor-not-allowed"
+                    placeholder="https://..." readonly required>
+            </div>
+
+            <!-- Notes -->
+            <div>
+                <label for="notes"
+                    class="block text-[11px] font-semibold text-gray-400 mb-1.5 text-center uppercase tracking-wider">Lessons
+                    / Debugging Notes</label>
+                <textarea id="notes" rows="3"
+                    class="w-full bg-[#1c1f26] border border-[#2b303b] rounded-lg p-2.5 text-gray-200 placeholder-gray-600 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition resize-none"
+                    placeholder="Core intuition, edge cases, time/space complexity..."></textarea>
+            </div>
+
+        </main>
+
+        <!-- Submit Button -->
+        <button type="button" id="save-btn"
+            class="w-full mt-5 bg-emerald-500 hover:bg-emerald-600 active:scale-[0.99] text-white font-bold py-2.5 px-4 rounded-lg shadow-[0_0_15px_rgba(16,185,129,0.2)] transition duration-150 flex items-center justify-center gap-2 cursor-pointer">
+            Save Problem
+        </button>
+
+    </div>
+
+    <script type="module" src="popup.js"></script>
+</body>
+
+</html>
