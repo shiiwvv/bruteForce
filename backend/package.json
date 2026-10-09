@@ -9,7 +9,8 @@
     "app": "node app.js",
     "index": "node index.js",
     "dev": "nodemon src/index.js",
-    "push": "git push origin main"
+    "push": "git push origin main",
+    "start": "node src/index.js"
   },
   "author": "",
   "license": "ISC",
