@@ -3,6 +3,7 @@ export const DB_NAME = "bruteForce";
 export const cookieOptions = {
     httpOnly : true,
     secure : true,
+    sameSite: "none"
 };
 
 export const customMessages = (problemCount) => {
