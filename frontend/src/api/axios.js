@@ -1,7 +1,11 @@
 import axios from 'axios';
 
+const BASE_URL = (
+  import.meta.env.VITE_API_BASE_URL || 'https://bruteforce-jktd.onrender.com'
+).replace(/\/$/, ''); // strip any accidental trailing slash
+
 const api = axios.create({
-  baseURL: '/api/v1',
+  baseURL: `${BASE_URL}/api/v1`,
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
