@@ -10,8 +10,7 @@ const app = express();
 // HTTP-only cookies (accessToken, refreshToken).
 app.use(cors({
     origin: [
-        'http://localhost:5173',
-        'chrome-extension://lhcgioecbfgjaojlfinnobflggjjljnl',
+        process.env.FRONTEND_URL,
     ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
