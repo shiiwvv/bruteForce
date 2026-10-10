@@ -56,7 +56,7 @@ const handleUserSignUpReq = asyncHandler(async (req, res) => {
   await validateEmail(email);
   console.log("req.file: ", req.file);
 
-  const avatarLocalFilePath = req.file?.path;
+  let avatarLocalFilePath = req.file?.path;
   if (!avatarLocalFilePath) {
     avatarLocalFilePath = null;
   }
