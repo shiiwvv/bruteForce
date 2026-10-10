@@ -36,14 +36,11 @@ export default function AddProblemModal({ onClose, onAdded }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!form.reminderDate) {
-      toast.error('Please pick a reminder date');
-      return;
-    }
-
-    // Convert user-selected date (YYYY-MM-DD) into a valid future ISO 8601 string
-    // We set time to start-of-day in UTC to be safe and consistent
-    const isoString = new Date(form.reminderDate + 'T00:00:00.000Z').toISOString();
+    // Convert user-selected date (YYYY-MM-DD) into a valid ISO 8601 string
+    // Only set if the user actually picked a date
+    const isoString = form.reminderDate
+      ? new Date(form.reminderDate + 'T00:00:00.000Z').toISOString()
+      : null;
 
     setLoading(true);
     const toastId = toast.loading('Adding problem…');
@@ -55,7 +52,7 @@ export default function AddProblemModal({ onClose, onAdded }) {
         topic: form.topic,
         difficulty: form.difficulty,
         link: form.link,
-        ISOString: isoString,
+        ...(isoString && { ISOString: isoString }),
         ...(form.time && { time: form.time }),
         ...(form.notes && { notes: form.notes }),
       };
@@ -187,20 +184,19 @@ export default function AddProblemModal({ onClose, onAdded }) {
             <label className="block text-xs font-medium text-text-muted mb-1.5">
               <span className="inline-flex items-center gap-1">
                 <Calendar size={12} />
-                Reminder Date <span className="text-danger">*</span>
+                Reminder Date <span className="text-text-subtle">(optional)</span>
               </span>
             </label>
             <input
               id="reminder-date"
               name="reminderDate"
               type="date"
-              required
               min={today()}
               value={form.reminderDate}
               onChange={handleChange}
               className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2.5 text-sm text-text focus:border-primary/60 focus:outline-none transition-colors [color-scheme:dark] cursor-pointer"
             />
-            <p className="text-xs text-text-subtle mt-1">You'll receive an email reminder on this date.</p>
+            <p className="text-xs text-text-subtle mt-1">Optional — you'll receive an email reminder on this date if set.</p>
           </div>
 
           {/* Time taken (optional) */}

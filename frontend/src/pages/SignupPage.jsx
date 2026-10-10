@@ -35,10 +35,6 @@ export default function SignupPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!avatar) {
-      toast.error('Please upload an avatar image');
-      return;
-    }
 
     setLoading(true);
     const toastId = toast.loading('Creating your account…');
@@ -51,7 +47,10 @@ export default function SignupPage() {
       fd.append('username', form.username);
       fd.append('email', form.email);
       fd.append('password', form.password);
-      fd.append('avatar', avatar); // multer field name: 'avatar'
+      // Only append avatar if a file was actually selected
+      if (avatar) {
+        fd.append('avatar', avatar); // multer field name: 'avatar'
+      }
 
       await signup(fd);
       toast.success('Account created! Please sign in.', { id: toastId });
@@ -107,7 +106,7 @@ export default function SignupPage() {
               onChange={handleFileChange}
               id="avatar-input"
             />
-            <p className="text-xs text-text-subtle">Click to upload avatar <span className="text-danger">*</span></p>
+            <p className="text-xs text-text-subtle">Click to upload avatar <span className="text-text-subtle">(optional)</span></p>
           </div>
 
           {/* Name row */}
