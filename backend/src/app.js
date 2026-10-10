@@ -10,6 +10,7 @@ const app = express();
 // HTTP-only cookies (accessToken, refreshToken).
 app.use(cors({
     origin: [
+        "https://bruteforce-jktd.onrender.com",
         process.env.FRONTEND_URL,
     ],
     credentials: true,
