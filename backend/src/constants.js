@@ -59,4 +59,9 @@ export const customSubjects = (problemCount) => {
     return subjects;
 }
 
+export const DEFAULT_AVATAR = {
+    url: "https://res.cloudinary.com/gkmpenrb/image/upload/v1791655307/a1eofg0ik5w202ruz1ci.webp",
+    public_id: "a1eofg0ik5w202ruz1ci"
+};
+
 

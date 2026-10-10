@@ -35,7 +35,7 @@ const uploadOnCloudinary = async (localFilePath) => {
 
 const deleteFromCloudinary = async (public_id , resource_type = "image") => {
     if(!public_id){
-        throw new ApiError(500 , "public_id not Found");
+        return null;
     }
 
     const result = await cloudinary.uploader.destroy(
@@ -49,7 +49,7 @@ const deleteFromCloudinary = async (public_id , resource_type = "image") => {
     if(result.result !== 'ok'){
         throw new ApiError(500 , "Deletion Failed");
     }
-
+ 
     return result;
 };
 

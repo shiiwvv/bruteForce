@@ -17,11 +17,12 @@ app.use(
       if (!origin) return callback(null, true);
 
       const isExactMatch = allowedOrigins.includes(origin) || origin.includes("localhost");
-
+        console.log("isExactMatch" , isExactMatch);
       const isVercelPreview = 
         origin.startsWith("https://bruteforce-frontend") && 
         origin.endsWith(".vercel.app");
 
+        console.log("isVercelPreview" , isVercelPreview);
       if (isExactMatch || isVercelPreview) {
         return callback(null, true);
       }

@@ -1,100 +1,92 @@
 import express from "express";
 import mongoose, { isValidObjectId } from "mongoose";
-import { ApiError } from '../utils/apiError.js';
-import { ApiResponse } from '../utils/apiResponse.js';
-import { asyncHandler } from '../utils/asyncHandler.js';
-import { User } from '../models/user.model.js';
-import { validateEmail } from "../utils/emailValidator.js"
-import { uploadOnCloudinary, deleteFromCloudinary } from "../../service/cloudinary.service.js";
+import { ApiError } from "../utils/apiError.js";
+import { ApiResponse } from "../utils/apiResponse.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import { User } from "../models/user.model.js";
+import { validateEmail } from "../utils/emailValidator.js";
+import {
+  uploadOnCloudinary,
+  deleteFromCloudinary,
+} from "../../service/cloudinary.service.js";
 import { inputValidate } from "../utils/inputValidation.js";
-import { cookieOptions } from "../constants.js";
-import { agenda } from "../../service/agenda.service.js"
+import { cookieOptions, DEFAULT_AVATAR } from "../constants.js";
+import { agenda } from "../../service/agenda.service.js";
 import fs from "fs";
 
 // utilities/tokenGenerator.js
 const accessAndRefreshTokenGeneration = async (userId) => {
-    try {
-        const userObj = await User.findById(userId);
-        if (!userObj) {
-            throw new ApiError(404, "User not found");
-        }
-
-        const accessToken = await userObj.generateAccessToken();
-        const refreshToken = await userObj.generateRefreshToken();
-
-        userObj.refreshToken = refreshToken;
-        await userObj.save({ validateBeforeSave: false });
-
-        return { accessToken, refreshToken };
-    } catch (error) {
-        if (error instanceof ApiError) throw error;
-        throw new ApiError(500, "Refresh and Access Token Generation Failed");
+  try {
+    const userObj = await User.findById(userId);
+    if (!userObj) {
+      throw new ApiError(404, "User not found");
     }
+
+    const accessToken = await userObj.generateAccessToken();
+    const refreshToken = await userObj.generateRefreshToken();
+
+    userObj.refreshToken = refreshToken;
+    await userObj.save({ validateBeforeSave: false });
+
+    return { accessToken, refreshToken };
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    throw new ApiError(500, "Refresh and Access Token Generation Failed");
+  }
 };
 
 //Checked
 const handleUserSignUpReq = asyncHandler(async (req, res) => {
-    console.log("Running Signup");
-    console.log(req.body);
-    const { username, firstName, secondName, email, password } = req.body;
+  console.log("Running Signup");
+  console.log(req.body);
+  const { username, firstName, secondName, email, password } = req.body;
 
-    if (inputValidate([username, firstName, secondName, email, password])) {
-        throw new ApiError(400, "All Fields Are required");
-    }
+  if (inputValidate([username, firstName, secondName, email, password])) {
+    throw new ApiError(400, "All Fields Are required");
+  }
 
+  const existedUser = await User.find({
+    $or: [{ username }, { email }],
+  });
 
-    const existedUser = await User.find({
-        $or: [{ username }, { email }],
-    });
+  if (existedUser.length !== 0) {
+    throw new ApiError(409, "Account with Email Or UserName Already Exists");
+  }
 
+  await validateEmail(email);
+  console.log("req.file: ", req.file);
 
-    if (existedUser.length !== 0) {
-        throw new ApiError(409, "Account with Email Or UserName Already Exists")
-    }
+  const avatarLocalFilePath = req.file?.path;
+  if (!avatarLocalFilePath) {
+    avatarLocalFilePath = null;
+  }
 
-    await validateEmail(email);
-    console.log("req.file: ", req.file);
+  const avatarUploadCloud = await uploadOnCloudinary(avatarLocalFilePath);
 
-    const avatarLocalFilePath = req.file?.path;
-    console.log(req.file?.path);
-    if (!avatarLocalFilePath) {
-        throw new ApiError(500, "File Upload Through Multer Failed");
-    }
-
-    const avatarUploadCloud = await uploadOnCloudinary(avatarLocalFilePath);
-
-    console.log("avatarUploadCloud: ", avatarUploadCloud);
-
-    if (!avatarUploadCloud) {
-        throw new ApiError(500, "Avatar Upload On Cloudinary Failed");
-    }
-
-    console.log("username: ", username);
-    console.log("password: ", password);
-    console.log("email: ", email);
-
-    const createUser = await User.create({
-        username,
-        firstName,
-        secondName,
-        email,
-        password,
-        avatar: avatarUploadCloud ? {
-            url: avatarUploadCloud.url,
-            public_id: avatarUploadCloud.public_id,
-        } : null,
-    });
-
-    if (!createUser) {
-        await deleteFromCloudinary(avatarUploadCloud.public_id);
-        if (avatarLocalFilePath && fs.existsSync(avatarLocalFilePath)) {
-            fs.unlink(avatarLocalFilePath);
+  const createUser = await User.create({
+    username,
+    firstName,
+    secondName,
+    email,
+    password,
+    avatar: avatarUploadCloud
+      ? {
+          url: avatarUploadCloud.url,
+          public_id: avatarUploadCloud.public_id,
         }
-        throw new ApiError(500, "Failed To Create User Doc in DB");
-    }
+      : DEFAULT_AVATAR,
+  });
 
-    const subject = 'Welcome to bruteForce.com — Your Account Is Ready 🚀';
-    const text = `
+  if (!createUser) {
+    await deleteFromCloudinary(avatarUploadCloud.public_id);
+    if (avatarLocalFilePath && fs.existsSync(avatarLocalFilePath)) {
+      fs.unlink(avatarLocalFilePath);
+    }
+    throw new ApiError(500, "Failed To Create User Doc in DB");
+  }
+
+  const subject = "Welcome to bruteForce.com — Your Account Is Ready 🚀";
+  const text = `
     Hi, ${createUser.username}
 
 Welcome to BruteForce.com! 🎉
@@ -109,97 +101,93 @@ Keep learning. Keep solving. Keep growing.
 
 Team BruteForce.com`;
 
-    await agenda.now("send welcome email", { to: email, subject, text });
+  await agenda.now("send welcome email", { to: email, subject, text });
 
-    return res
-        .status(200)
-        .json(new ApiResponse(
-            200,
-            createUser,
-            "User SignedUp Successfully",
-        ));
+  return res
+    .status(200)
+    .json(new ApiResponse(200, createUser, "User SignedUp Successfully"));
 });
 
 //Checked
 const handleSignInReq = asyncHandler(async (req, res) => {
-    const { usernameOrEmail, password } = req.body;
+  const { usernameOrEmail, password } = req.body;
 
-    if (
-        inputValidate([usernameOrEmail, password])
-    ) {
-        throw new ApiError(400, "username and password Required");
-    }
+  if (inputValidate([usernameOrEmail, password])) {
+    throw new ApiError(400, "username and password Required");
+  }
 
-    const user = await User.find({
-        $or: [{ username: usernameOrEmail }, { email: usernameOrEmail }],
-    });
+  const user = await User.find({
+    $or: [{ username: usernameOrEmail }, { email: usernameOrEmail }],
+  });
 
-    if (user.length === 0) {
-        throw new ApiError(400, "No Such User Found in the database");
-    }
+  if (user.length === 0) {
+    throw new ApiError(400, "No Such User Found in the database");
+  }
 
-    console.log("user: ", user);
+  console.log("user: ", user);
 
-    const passwordValidate = await user[0].passwordValidation(password);
+  const passwordValidate = await user[0].passwordValidation(password);
 
-    if (!passwordValidate) {
-        throw new ApiError(400, "Incorrect Password");
-    }
+  if (!passwordValidate) {
+    throw new ApiError(400, "Incorrect Password");
+  }
 
-    const { accessToken, refreshToken } = await accessAndRefreshTokenGeneration(user[0]._id);
+  const { accessToken, refreshToken } = await accessAndRefreshTokenGeneration(
+    user[0]._id,
+  );
 
-    const loggedInUser = await User
-        .findById(user[0]._id)
-        .select("-refreshToken -password");
+  const loggedInUser = await User.findById(user[0]._id).select(
+    "-refreshToken -password",
+  );
 
-    // const options = {
-    //     httpOnly : true,
-    //     secure : true,
-    // };
+  // const options = {
+  //     httpOnly : true,
+  //     secure : true,
+  // };
 
-    return res
-        .status(200)
-        .cookie("accessToken", accessToken, cookieOptions)
-        .cookie("refreshToken", refreshToken, cookieOptions)
-        .json(new ApiResponse(
-            200,
-            {
-                loggedInUser, accessToken, refreshToken
-            },
-            "User SuccessFully LoggedIn",
-        ));
+  return res
+    .status(200)
+    .cookie("accessToken", accessToken, cookieOptions)
+    .cookie("refreshToken", refreshToken, cookieOptions)
+    .json(
+      new ApiResponse(
+        200,
+        {
+          loggedInUser,
+          accessToken,
+          refreshToken,
+        },
+        "User SuccessFully LoggedIn",
+      ),
+    );
 });
 
 //Checked
 const handleSignOutReq = asyncHandler(async (req, res) => {
-    const userId = req.user?._id;
-    console.log("req.user: ", req.user);
+  const userId = req.user?._id;
+  console.log("req.user: ", req.user);
 
-    if (!isValidObjectId(userId)) {
-        throw new ApiError(400, "Invalid UserId");
-    }
+  if (!isValidObjectId(userId)) {
+    throw new ApiError(400, "Invalid UserId");
+  }
 
-    const user = await User.findByIdAndUpdate(
-        userId,
-        {
-            $unset: {
-                refreshToken: 1,
-            }
-        },
-        {
-            returnDocument: "after",
-        }
-    );
+  const user = await User.findByIdAndUpdate(
+    userId,
+    {
+      $unset: {
+        refreshToken: 1,
+      },
+    },
+    {
+      returnDocument: "after",
+    },
+  );
 
-    return res.status(200)
-        .clearCookie('accessToken', cookieOptions)
-        .clearCookie('refreshToken', cookieOptions)
-        .json(new ApiResponse(
-            200,
-            {
-            },
-            "User Logged Out Success"
-        ));
+  return res
+    .status(200)
+    .clearCookie("accessToken", cookieOptions)
+    .clearCookie("refreshToken", cookieOptions)
+    .json(new ApiResponse(200, {}, "User Logged Out Success"));
 });
 
 //Handle Peramenet Account Delete..
@@ -207,217 +195,203 @@ const handleSignOutReq = asyncHandler(async (req, res) => {
 
 //Checked
 const handleAccountUpdateReq = asyncHandler(async (req, res) => {
-    const { username, firstName, secondName } = req.body;
+  const { username, firstName, secondName } = req.body;
 
-    if (!isValidObjectId(req.user?._id)) {
-        throw new ApiError(400, "Invalid UserId");
-    }
+  if (!isValidObjectId(req.user?._id)) {
+    throw new ApiError(400, "Invalid UserId");
+  }
 
-    const updateObj = {};
+  const updateObj = {};
 
-    if (username) {
-        updateObj.username = username;
-    }
-    if (firstName) {
-        updateObj.firstName = firstName;
-    }
-    if (secondName) {
-        updateObj.secondName = secondName;
-    }
+  if (username) {
+    updateObj.username = username;
+  }
+  if (firstName) {
+    updateObj.firstName = firstName;
+  }
+  if (secondName) {
+    updateObj.secondName = secondName;
+  }
 
-    const user = await User.findByIdAndUpdate(
-        req.user?._id,
-        updateObj,
-        {
-            returnDocument: "after",
-        }
-    );
+  const user = await User.findByIdAndUpdate(req.user?._id, updateObj, {
+    returnDocument: "after",
+  });
 
-    if (!user) {
-        throw new ApiError(500, "failed to process update request");
-    }
+  if (!user) {
+    throw new ApiError(500, "failed to process update request");
+  }
 
-    return res
-        .status(200)
-        .json(new ApiResponse(
-            200,
-            user,
-            "Updation SuccessFull",
-        ));
-
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, "Updation SuccessFull"));
 });
 
 //Checked
 const handleChangeEmailReq = asyncHandler(async (req, res) => {
-    if (!isValidObjectId(req.user?._id)) {
-        throw new ApiError(400, "Invalid UserId");
-    }
+  if (!isValidObjectId(req.user?._id)) {
+    throw new ApiError(400, "Invalid UserId");
+  }
 
-    const { email } = req.body;
+  const { email } = req.body;
 
-    if (!email) {
-        throw new ApiError(400, "Email Required for change req");
-    }
+  if (!email) {
+    throw new ApiError(400, "Email Required for change req");
+  }
 
-    const checkEmail = await User.findOne({ email, _id: { $ne: req.user._id } });
-    if (checkEmail) {
-        throw new ApiError(400, "Email already linked with another account");
-    }
+  const checkEmail = await User.findOne({ email, _id: { $ne: req.user._id } });
+  if (checkEmail) {
+    throw new ApiError(400, "Email already linked with another account");
+  }
 
-    await validateEmail(email);
+  await validateEmail(email);
 
-    const user = await User.findByIdAndUpdate(
-        req.user?._id,
-        {
-            email: email,
-        },
-        { returnDocument: 'after' },
-    );
+  const user = await User.findByIdAndUpdate(
+    req.user?._id,
+    {
+      email: email,
+    },
+    { returnDocument: "after" },
+  );
 
-    if (!user) {
-        throw new ApiError(500, "Failed to update email");
-    }
+  if (!user) {
+    throw new ApiError(500, "Failed to update email");
+  }
 
-    await agenda.now("change email", { email });
+  await agenda.now("change email", { email });
 
-    return res
-        .status(200)
-        .json(new ApiResponse(
-            200,
-            user,
-            "Email Updated Successfully",
-        ));
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, "Email Updated Successfully"));
 });
 
-//Checked 
+//Checked
 const handleChangePasswordReq = asyncHandler(async (req, res) => {
-    if (!isValidObjectId(req.user?._id)) {
-        throw new ApiError(400, "Invalid UserId");
-    }
+  if (!isValidObjectId(req.user?._id)) {
+    throw new ApiError(400, "Invalid UserId");
+  }
 
-    const { confirmPassword, newPassword, oldPassword } = req.body;
+  const { confirmPassword, newPassword, oldPassword } = req.body;
 
-    if (inputValidate([confirmPassword, newPassword, oldPassword])) {
-        throw new ApiError(400, "Need OldPassword , newPassword , confirmPassword");
-    }
+  if (inputValidate([confirmPassword, newPassword, oldPassword])) {
+    throw new ApiError(400, "Need OldPassword , newPassword , confirmPassword");
+  }
 
-    const user = await User.findById(req.user?._id);
+  const user = await User.findById(req.user?._id);
 
-    if (!user) {
-        throw new ApiError(500, "failed To Fetch the corresponding user object");
-    }
+  if (!user) {
+    throw new ApiError(500, "failed To Fetch the corresponding user object");
+  }
 
-    const passValidation = await user.passwordValidation(oldPassword);
-    if (!passValidation) {
-        throw new ApiError(400, "Invalid oldPassword");
-    }
+  const passValidation = await user.passwordValidation(oldPassword);
+  if (!passValidation) {
+    throw new ApiError(400, "Invalid oldPassword");
+  }
 
-    if (newPassword !== confirmPassword) {
-        throw new ApiError(400, "newPassword and confirmation field doesn't match");
-    }
+  if (newPassword !== confirmPassword) {
+    throw new ApiError(400, "newPassword and confirmation field doesn't match");
+  }
 
-    user.password = newPassword;
+  user.password = newPassword;
 
-    await user.save({ validateBeforeSave: false });
+  await user.save({ validateBeforeSave: false });
 
-    return res
-        .status(200)
-        .json(new ApiResponse(
-            200,
-            user,
-            "Password Changed Successfullyy",
-        ));
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, "Password Changed Successfullyy"));
 });
 
 //Checked
 const handleAvatarUpdateReq = asyncHandler(async (req, res) => {
-    const userId = req.user?._id;
-    if (!isValidObjectId(userId)) {
-        throw new ApiError(400, "Invalid UserId");
-    }
+  const userId = req.user?._id;
+  if (!isValidObjectId(userId)) {
+    throw new ApiError(400, "Invalid UserId");
+  }
 
-    console.log("req.file", req.file);
+  const avatarLocalFilePath = req.file?.path;
+  if (!avatarLocalFilePath) {
+    throw new ApiError(400, "Avatar File Not Found");
+  }
 
-    const avatarLocalFilePath = req.file?.path;
+  const avatarCloudUpload = await uploadOnCloudinary(avatarLocalFilePath);
+  if (!avatarCloudUpload) {
+    throw new ApiError(500, "File Upload On Cloud failed");
+  }
 
-    if (!avatarLocalFilePath) {
-        throw new ApiError(400, "Avatar File Not Found");
-    }
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
 
-    const avatarCloundUpload = await uploadOnCloudinary(avatarLocalFilePath);
+  const oldAvatarPublicId = user.avatar?.public_id;
 
-    if (!avatarCloundUpload) {
-        throw new ApiError(500, "File Upload On Cloud failed");
-    }
+  user.avatar = {
+    url: avatarCloudUpload.url,
+    public_id: avatarCloudUpload.public_id,
+  };
 
-    const user = await User.findByIdAndUpdate(
-        req.user?._id,
-        {
-            avatar: {
-                url: avatarCloundUpload.url,
-                public_id: avatarCloundUpload.public_id,
-            }
-        },
-        { returnDocument: "after" }
-    );
+  try {
+    await user.save();
+  } catch (error) {
+    await deleteFromCloudinary(avatarCloudUpload.public_id, "image");
+    throw new ApiError(500, "Database update failed. Image update reverted.");
+  }
 
-    if (!user) {
-        throw new ApiError(500, "User not Found");
-    }
+  if (oldAvatarPublicId && oldAvatarPublicId !== DEFAULT_AVATAR.public_id) {
+    await deleteFromCloudinary(oldAvatarPublicId, "image");
+  }
 
-    return res
-        .status(200)
-        .json(new ApiResponse(
-            200,
-            user,
-            "Successfully Updated User's Avatar",
-        ));
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, "Successfully Updated User's Avatar"));
 });
 
 //Checked
 const handleGetUserReq = asyncHandler(async (req, res) => {
-    if (!isValidObjectId(req.user?._id)) {
-        throw new ApiError(400, "Invalid userId");
-    }
+  if (!isValidObjectId(req.user?._id)) {
+    throw new ApiError(400, "Invalid userId");
+  }
 
-    const { username } = req.body;
+  const { username } = req.body;
 
-    if (inputValidate([username])) {
-        throw new ApiError(400, "No Username");
-    }
+  if (inputValidate([username])) {
+    throw new ApiError(400, "No Username");
+  }
 
-    const user = await User.find({ username });
+  const user = await User.find({ username });
 
-    console.log(user);
+  console.log(user);
 
-    if (user.length === 0) {
-        throw new ApiError(500, `No user with username :  ${username} found`);
-    }
+  if (user.length === 0) {
+    throw new ApiError(500, `No user with username :  ${username} found`);
+  }
 
-    return res
-        .status(200)
-        .json(new ApiResponse(
-            200,
-            user[0],
-            `user with username :  ${username} found`
-        ));
-
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, user[0], `user with username :  ${username} found`),
+    );
 });
 
 //Checked
 const handleGetCurrentUserReq = asyncHandler(async (req, res) => {
-    if (!isValidObjectId(req.user?._id)) {
-        throw new ApiError(401, "Not authenticated");
-    }
+  if (!isValidObjectId(req.user?._id)) {
+    throw new ApiError(401, "Not authenticated");
+  }
 
-    // req.user is already populated by verifyJWT (password & refreshToken excluded)
-    return res
-        .status(200)
-        .json(new ApiResponse(
-            200,
-            { loggedInUser: req.user },
-            "Session valid",
-        ));
+  // req.user is already populated by verifyJWT (password & refreshToken excluded)
+  return res
+    .status(200)
+    .json(new ApiResponse(200, { loggedInUser: req.user }, "Session valid"));
 });
 
-export { handleUserSignUpReq, handleSignInReq, handleSignOutReq, handleAccountUpdateReq, handleChangeEmailReq, handleChangePasswordReq, handleAvatarUpdateReq, handleGetUserReq, handleGetCurrentUserReq };
+export {
+  handleUserSignUpReq,
+  handleSignInReq,
+  handleSignOutReq,
+  handleAccountUpdateReq,
+  handleChangeEmailReq,
+  handleChangePasswordReq,
+  handleAvatarUpdateReq,
+  handleGetUserReq,
+  handleGetCurrentUserReq,
+};
