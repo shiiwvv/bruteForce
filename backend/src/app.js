@@ -48,6 +48,9 @@ import { problemRouter } from "../src/routes/problems.routes.js";
 import { listRouter } from "../src/routes/list.routes.js";
 import { globalErrorHandler } from "../src/middlewares/error.middleware.js";
 
+app.get('/api/v1/ping', (req, res) => {
+  res.status(200).json({ status: "awake" });
+});
 app.use('/api/v1/user', userRouter);
 app.use('/api/v1/problem', problemRouter);
 app.use('/api/v1/list', listRouter);
