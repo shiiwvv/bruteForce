@@ -13,6 +13,7 @@ import { inputValidate } from "../utils/inputValidation.js";
 import { cookieOptions, DEFAULT_AVATAR } from "../constants.js";
 import { agenda } from "../../service/agenda.service.js";
 import fs from "fs";
+import {queue} from "../../redis/queue.redis.js";
 
 // utilities/tokenGenerator.js
 const accessAndRefreshTokenGeneration = async (userId) => {
@@ -37,8 +38,7 @@ const accessAndRefreshTokenGeneration = async (userId) => {
 
 //Checked
 const handleUserSignUpReq = asyncHandler(async (req, res) => {
-  console.log("Running Signup");
-  console.log(req.body);
+  console.log("handleUserSignUpReq called with body:", req.body);
   const { username, firstName, secondName, email, password } = req.body;
 
   if (inputValidate([username, firstName, secondName, email, password])) {
@@ -54,7 +54,6 @@ const handleUserSignUpReq = asyncHandler(async (req, res) => {
   }
 
   await validateEmail(email);
-  console.log("req.file: ", req.file);
 
   let avatarLocalFilePath = req.file?.path;
   if (!avatarLocalFilePath) {
@@ -101,7 +100,23 @@ Keep learning. Keep solving. Keep growing.
 
 Team BruteForce.com`;
 
-  await agenda.now("send welcome email", { to: email, subject, text });
+  const job = await queue.add("email-queue", 
+    {
+      sendTo: createUser.email,
+      subject,
+      text,
+      html: null
+    },
+    {
+      attempts: 3,          
+      backoff: {
+        type: 'exponential',
+        delay: 5000         
+      }
+    }
+  );
+
+  console.log(`Job ${job.id} added to the queue for sending welcome email.`);
 
   return res
     .status(200)

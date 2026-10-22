@@ -7,6 +7,7 @@ const app = express();
 const allowedOrigins = [
   "https://bruteforce-frontend.vercel.app",
   process.env.FRONTEND_URL,
+  "http://localhost:3000",
 ].filter(Boolean);
 
 // CORS — must be the very first middleware so preflight OPTIONS requests
@@ -17,12 +18,11 @@ app.use(
       if (!origin) return callback(null, true);
 
       const isExactMatch = allowedOrigins.includes(origin) || origin.includes("localhost");
-        console.log("isExactMatch" , isExactMatch);
+      console.log("CORS check for origin:", origin, "Exact match:", isExactMatch);
       const isVercelPreview = 
         origin.startsWith("https://bruteforce-frontend") && 
         origin.endsWith(".vercel.app");
 
-        console.log("isVercelPreview" , isVercelPreview);
       if (isExactMatch || isVercelPreview) {
         return callback(null, true);
       }

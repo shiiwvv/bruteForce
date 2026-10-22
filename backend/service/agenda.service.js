@@ -152,32 +152,6 @@ const initAgenda = async (mongooseConnection) => {
             throw err;
         }
     });
-    
-    agenda.define("send welcome email" , async(job) => {
-        try {
-            const {to , subject , text , html} = job.attrs.data;
-            await sendMail(to , subject , text , html)
-            console.log("Sent welcome Email");
-            job.attrs.data.retryCount = 0;
-        } catch (error) {
-            let retries = job.attrs.data.retryCount;
-            retries += 1;
-            job.attrs.data.retryCount = retries;
-
-            if(retries < 3){
-                const delayMinutes = Math.pow(5 , retries);
-                const nextRun = new Date(Date.now() + delayMinutes * 60 * 1000);
-
-                job.attrs.nextRunAt = nextRun;
-                await job.save();
-            }
-            else{
-                console.log("");
-            }
-
-            throw error;
-        }
-    });
 
     agenda.define("change email" , async(job) => {
         try {
@@ -218,7 +192,6 @@ Team bruteForce.com
             throw error;
         }
     })
-
 
     agenda.on('fail', (error, job) => {
         console.log(`🚨 ALERT: Job [${job.attrs.name}] failed!`);

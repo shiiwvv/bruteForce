@@ -64,4 +64,5 @@ export const DEFAULT_AVATAR = {
     public_id: "a1eofg0ik5w202ruz1ci"
 };
 
+export const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
 

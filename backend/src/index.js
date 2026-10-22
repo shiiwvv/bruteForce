@@ -2,7 +2,8 @@ import "dotenv/config";
 
 import {connectDB} from './db/index.js';
 import { app } from "./app.js";
-import {initAgenda} from "../service/agenda.service.js"
+import {initAgenda} from "../service/agenda.service.js";
+import "../redis/worker.redis.js";
 
 connectDB()
 .then(async (mongooseConnection) => {
