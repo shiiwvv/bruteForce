@@ -222,7 +222,7 @@ export default function SignupPage() {
             disabled={loading}
             onClick={() => {
               setLoading(true);
-              window.location.href = 'http://localhost:5000/api/v1/user/signup/github';
+              window.location.href = `${import.meta.env.VITE_API_BASE_URL}/api/v1/user/signup/github`;
             }}
             className="w-full bg-surface-2 hover:bg-border disabled:opacity-60 disabled:cursor-not-allowed border border-border text-text font-semibold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2.5 cursor-pointer"
           >
