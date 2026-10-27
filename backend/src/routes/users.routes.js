@@ -1,5 +1,5 @@
 import { Router } from "express";
-import {handleAccountUpdateReq , handleAvatarUpdateReq , handleChangeEmailReq , handleChangePasswordReq , handleSignInReq , handleSignOutReq , handleUserSignUpReq , handleGetUserReq, handleGetCurrentUserReq} from "../controllers/user.controller.js";
+import {handleAccountUpdateReq , handleAvatarUpdateReq , handleChangeEmailReq , handleChangePasswordReq , handleSignInReq , handleSignOutReq , handleUserSignUpReq , handleGetUserReq, handleGetCurrentUserReq , handleUserSignUpReqWithGitHub , handleGitHubOAuthCallback} from "../controllers/user.controller.js";
 import { upload } from "../middlewares/multer.middleare.js";
 import {verifyJWT} from "../middlewares/auth.middleware.js";
 
@@ -8,6 +8,14 @@ const userRouter = Router();
 userRouter
     .route('/signup/')
     .post(upload.single('avatar') , handleUserSignUpReq);
+
+userRouter
+    .route('/signup/github')
+    .get(handleUserSignUpReqWithGitHub);
+
+userRouter
+    .route('/signup/github/callback')
+    .get(handleGitHubOAuthCallback);
 
 userRouter
     .route('/signin/')

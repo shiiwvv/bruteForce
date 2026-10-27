@@ -5,13 +5,11 @@ import cors from 'cors';
 const app = express();
 
 const allowedOrigins = [
-  "https://bruteforce-frontend.vercel.app",
   process.env.FRONTEND_URL,
   "http://localhost:3000",
 ].filter(Boolean);
 
-// CORS — must be the very first middleware so preflight OPTIONS requests
-// are handled before any route or cookie logic runs.
+
 app.use(
   cors({
     origin: (origin, callback) => {
@@ -57,4 +55,4 @@ app.use('/api/v1/list', listRouter);
 
 app.use(globalErrorHandler);
 
-export { app };
+export { app }; 

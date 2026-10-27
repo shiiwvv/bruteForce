@@ -10,10 +10,16 @@ import {
   deleteFromCloudinary,
 } from "../../service/cloudinary.service.js";
 import { inputValidate } from "../utils/inputValidation.js";
-import { cookieOptions, DEFAULT_AVATAR } from "../constants.js";
+import {
+  cookieOptions,
+  DEFAULT_AVATAR,
+  generateRandomString,
+  welcomeText
+} from "../constants.js";
 import { agenda } from "../../service/agenda.service.js";
 import fs from "fs";
-import {queue} from "../../redis/queue.redis.js";
+import { emailQueue } from "../../redis/queue.redis.js";
+import crypto from "crypto";
 
 // utilities/tokenGenerator.js
 const accessAndRefreshTokenGeneration = async (userId) => {
@@ -36,9 +42,142 @@ const accessAndRefreshTokenGeneration = async (userId) => {
   }
 };
 
+const handleUserSignUpReqWithGitHub = asyncHandler(async (req, res) => {
+  const randomString = generateRandomString(32);
+  console.log("randomeString: ", randomString);
+
+  const githubAuthUrl = new URL("https://github.com/login/oauth/authorize");
+  githubAuthUrl.searchParams.append("client_id", process.env.GITHUB_CLIENT_ID);
+  githubAuthUrl.searchParams.append(
+    "redirect_uri",
+    process.env.GITHUB_REDIRECT_URI || "http://localhost:5000/api/v1/user/signup/github/callback",
+  );
+  githubAuthUrl.searchParams.append("response_type", "code");
+  githubAuthUrl.searchParams.append("scope", "read:user user:email");
+  githubAuthUrl.searchParams.append("state", randomString);
+
+  const customizedCookieOptions = {
+    ...cookieOptions,
+    maxAge: 5 * 60 * 1000,
+  };
+
+  return res
+    .cookie("requestState", randomString, customizedCookieOptions)
+    .redirect(githubAuthUrl);
+});
+
+const handleGitHubOAuthCallback = asyncHandler(async (req, res) => {
+  const { code, state } = req.query;
+  const { requestState } = req.cookies;
+
+  console.log("req.cookies ", req.cookies);
+
+  console.log("state: ", state);
+  console.log("state(typeof): ", typeof state);
+
+  console.log("requestState: ", requestState);
+  console.log("requestState(typeof): ", typeof requestState);
+
+  if (!code) {
+    return res.status(400).send("Authorization code missing from GitHub");
+  }
+  if (!requestState || requestState !== state) {
+    return res.status(403).send("Security Error: CSRF state mismatch");
+  }
+
+  try {
+    const tokenResponse = await fetch(
+      "https://github.com/login/oauth/access_token",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          client_id: process.env.GITHUB_CLIENT_ID,
+          client_secret: process.env.GITHUB_CLIENT_SECRET,
+          code: code,
+          redirect_uri: process.env.GITHUB_REDIRECT_URI,
+        }),
+      },
+    );
+
+    console.log("tokenResponse: ", tokenResponse);
+    console.log("tokenResponse type: ", typeof tokenResponse);
+
+    const tokenData = await tokenResponse.json();
+    console.log("tokenData: ", tokenData);
+    console.log("tokenData type: ", typeof tokenData);
+    const gitHubAccessToken = tokenData.access_token;
+
+    if (!gitHubAccessToken) {
+      throw new Error(
+        `Failed to fetch access token: ${tokenResponse.statusText}`,
+      );
+    }
+
+    const userProfileResponse = await fetch("https://api.github.com/user", {
+      headers: { Authorization: `Bearer ${gitHubAccessToken}` },
+    });
+
+    const userProfile = await userProfileResponse.json();
+    const userEmailsResponse = await fetch(
+      "https://api.github.com/user/emails",
+      {
+        headers: { Authorization: `Bearer ${gitHubAccessToken}` },
+      },
+    );
+    const emailsArray = await userEmailsResponse.json();
+
+    const primaryEmailObj = emailsArray.find(
+      (email) => email.primary === true && email.verified === true,
+    );
+
+    const userEmail = primaryEmailObj ? primaryEmailObj.email : null;
+
+    console.log("emailsArray: ", emailsArray);
+
+    let user = await User.findOne({ email: userEmail });
+
+    if (!user) {
+      let username = userProfile.login;
+
+      const checkUser = await User.findOne({ username });
+      if (checkUser) {
+        username = `${username}_${generateRandomString(4)}`;
+      }
+
+      user = await User.create({
+        username,
+        email: userEmail,
+        firstName: userProfile.name || username,
+        authProvider: 'github',
+        avatar: DEFAULT_AVATAR
+      });
+
+      if (!user) {
+        throw new ApiError(500, "Failed to create user in DB");
+      }
+    }
+
+    const { accessToken, refreshToken } = await accessAndRefreshTokenGeneration(user._id);
+    res.clearCookie("requestState");
+
+    res.cookie("accessToken", accessToken, cookieOptions)
+      .cookie("refreshToken", refreshToken, cookieOptions);
+
+    const frontendBase = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
+    return res.redirect(`${frontendBase}/dashboard`);
+
+  } catch (error) {
+    console.error("Error during GitHub OAuth callback:", error);
+    return res.status(500).send("Internal Server Error");
+  }
+});
+
 //Checked
 const handleUserSignUpReq = asyncHandler(async (req, res) => {
-  console.log("handleUserSignUpReq called with body:", req.body);
   const { username, firstName, secondName, email, password } = req.body;
 
   if (inputValidate([username, firstName, secondName, email, password])) {
@@ -70,9 +209,9 @@ const handleUserSignUpReq = asyncHandler(async (req, res) => {
     password,
     avatar: avatarUploadCloud
       ? {
-          url: avatarUploadCloud.url,
-          public_id: avatarUploadCloud.public_id,
-        }
+        url: avatarUploadCloud.url,
+        public_id: avatarUploadCloud.public_id,
+      }
       : DEFAULT_AVATAR,
   });
 
@@ -85,38 +224,24 @@ const handleUserSignUpReq = asyncHandler(async (req, res) => {
   }
 
   const subject = "Welcome to bruteForce.com — Your Account Is Ready 🚀";
-  const text = `
-    Hi, ${createUser.username}
+  const text = welcomeText(createUser.username);
 
-Welcome to BruteForce.com! 🎉
-
-Your account has been created successfully, and you're all set to start your journey of becoming a better problem solver.
-
-Whether you're practicing DSA, tracking your progress, or sharpening your algorithmic thinking, we're here to help you stay consistent and keep improving.
-
-Your account is now ready. Let the solving begin! 💻🔥
-
-Keep learning. Keep solving. Keep growing.
-
-Team BruteForce.com`;
-
-  const job = await queue.add("email-queue", 
+  const job = await emailQueue.add(
+    "email-queue",
     {
       sendTo: createUser.email,
       subject,
       text,
-      html: null
+      html: null,
     },
     {
-      attempts: 3,          
+      attempts: 3,
       backoff: {
-        type: 'exponential',
-        delay: 5000         
-      }
-    }
+        type: "exponential",
+        delay: 5000,
+      },
+    },
   );
-
-  console.log(`Job ${job.id} added to the queue for sending welcome email.`);
 
   return res
     .status(200)
@@ -139,8 +264,6 @@ const handleSignInReq = asyncHandler(async (req, res) => {
     throw new ApiError(400, "No Such User Found in the database");
   }
 
-  console.log("user: ", user);
-
   const passwordValidate = await user[0].passwordValidation(password);
 
   if (!passwordValidate) {
@@ -155,15 +278,15 @@ const handleSignInReq = asyncHandler(async (req, res) => {
     "-refreshToken -password",
   );
 
-  // const options = {
-  //     httpOnly : true,
-  //     secure : true,
-  // };
+  const customizedCookieOptions = {
+    ...cookieOptions,
+    maxAge: 10 * 24 * 60 * 60 * 1000,
+  };
 
   return res
     .status(200)
-    .cookie("accessToken", accessToken, cookieOptions)
-    .cookie("refreshToken", refreshToken, cookieOptions)
+    .cookie("accessToken", accessToken, customizedCookieOptions)
+    .cookie("refreshToken", refreshToken, customizedCookieOptions)
     .json(
       new ApiResponse(
         200,
@@ -409,4 +532,6 @@ export {
   handleAvatarUpdateReq,
   handleGetUserReq,
   handleGetCurrentUserReq,
+  handleGitHubOAuthCallback,
+  handleUserSignUpReqWithGitHub,
 };

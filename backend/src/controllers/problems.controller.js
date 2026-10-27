@@ -143,7 +143,7 @@ const handleMarkProblemReq = asyncHandler(async (req, res) => {
 
     problem.solved = !problem.solved;
 
-    await problem.save();
+    await problem.save({validateBeforeSave : false});
 
     return res
         .status(200)
@@ -197,7 +197,7 @@ const handleUpdateProblem = asyncHandler(async (req, res) => {
         user.notes = notes;
     }
 
-    await user.save();
+    await user.save({validateBeforeSave : false});
 
     return res
         .status(200)
@@ -243,7 +243,6 @@ const handleGetAllProblemsReq = asyncHandler(async (req, res) => {
     const userId = String(req.user?._id);
 
     const problems = await Problem.find({ owner: userId }).select(" -owner -lastRemindedAt");
-    console.log(problems);
 
     if (problems.length === 0) {
         throw new ApiError(404, "No Problems Found, Log One To View");

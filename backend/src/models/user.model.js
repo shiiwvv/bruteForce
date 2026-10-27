@@ -10,7 +10,7 @@ const userSchema = new Schema({
         unique: true,
         trim: true,
         index: true,
-    },
+    }, 
     email: {
         type: String,
         required: true,
@@ -25,11 +25,17 @@ const userSchema = new Schema({
     },
     secondName: {
         type: String,
-        required: true
     },
     password: {
         type: String,
-        required: true
+        required: function () {
+            return this.authProvider === "local";
+        }
+    },
+    authProvider: {
+        type: String,
+        required : true,
+        enum: ["local", "google" , 'github'],  
     },
     avatar: {
         url: {

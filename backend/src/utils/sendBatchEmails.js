@@ -22,12 +22,12 @@ export const sendCurrentBatchMail = async (currentBatch) => {
         
         console.log("sendCurrentbatch response : " , response);
 
-        let failedUsers = [];
+        // let failedUsers = [];
         let successfullUserIds = [];
         response.forEach((user , index) => {
             if(user.status === 'rejected'){
-                console.log(`Mail failed for ${currentBatch[index].userDetails.email}:` , user.reason);
-                failedUsers.push(currentBatch[index]);
+                // console.log(`Mail failed for ${currentBatch[index].userDetails.email}:` , user.reason);
+                // failedUsers.push(currentBatch[index]);
             }
             else{
                 successfullUserIds.push(currentBatch[index]._id);
@@ -36,8 +36,9 @@ export const sendCurrentBatchMail = async (currentBatch) => {
         
         console.log("Response(promise.all): " , response);
         console.log("successfullUserIds : " , successfullUserIds);
-        console.log("failedUsers : " , failedUsers);
-        return {successfullUserIds , failedUsers};
+        // console.log("failedUsers : " , failedUsers);
+        // return {successfullUserIds , failedUsers};
+        return {successfullUserIds};
     } catch (error) {
         console.log("sendCurrentbatch failed");
         throw error;
