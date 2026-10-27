@@ -5,11 +5,7 @@ const isProd = process.env.NODE_ENV === "production";
 
 export const cookieOptions = {
   httpOnly: true,
-  // secure:true over plain HTTP causes browsers to silently drop the cookie.
-  // Only enforce it in production (HTTPS).
   secure: isProd,
-  // "none" requires secure:true and is for cross-site contexts (iframes/embeds).
-  // "lax" is correct for same-origin redirect flows (OAuth callbacks).
   sameSite: isProd ? "none" : "lax",
 };
 
@@ -90,3 +86,21 @@ Keep learning. Keep solving. Keep growing.
 
 Team BruteForce.com`;
 };
+
+
+export const welcomeTextViaOAuth = (username, method) => {
+  return `Hi ${username},
+
+Welcome to BruteForce.com! 🎉
+
+You're all set to start your journey toward becoming a better problem solver. Whether you're practicing DSA, tracking your progress, or sharpening your algorithmic thinking, we're here to help you stay consistent and keep improving.
+
+Your account was created using ${method} authentication. If you'd like to log in directly using your email and password in the future, please update your username and set a password from your account settings.
+
+Your account is now ready. Let the solving begin! 💻🔥
+
+Keep learning. Keep solving. Keep growing.
+
+Team BruteForce.com`;
+};
+

@@ -14,7 +14,8 @@ import {
   cookieOptions,
   DEFAULT_AVATAR,
   generateRandomString,
-  welcomeText
+  welcomeText,
+  welcomeTextViaOAuth
 } from "../constants.js";
 import { agenda } from "../../service/agenda.service.js";
 import fs from "fs";
@@ -155,6 +156,26 @@ const handleGitHubOAuthCallback = asyncHandler(async (req, res) => {
         authProvider: 'github',
         avatar: DEFAULT_AVATAR
       });
+
+      const subject = "Welcome to bruteForce.com — Your Account Is Ready 🚀";
+      const text = welcomeTextViaOAuth(user.username, 'GitHub');
+
+      const job = await emailQueue.add(
+        "email-queue",
+        {
+          sendTo: user.email,
+          subject,
+          text,
+          html: null,
+        },
+        {
+          attempts: 3,
+          backoff: {
+            type: "exponential",
+            delay: 5000,
+          },
+        },
+      );
 
       if (!user) {
         throw new ApiError(500, "Failed to create user in DB");
