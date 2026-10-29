@@ -228,6 +228,7 @@ const handleUserSignUpReq = asyncHandler(async (req, res) => {
     secondName,
     email,
     password,
+    authProvider : 'local',
     avatar: avatarUploadCloud
       ? {
         url: avatarUploadCloud.url,
